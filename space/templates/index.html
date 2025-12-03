@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Ground System Simulator{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-text">
+        <p class="eyebrow">Mission Control Suite</p>
+        <h1>{{ hero.title }}</h1>
+        <p>{{ hero.subtitle }}</p>
+        <div class="cta-row">
+            <a class="cta primary" href="{{ hero.primary_cta.href }}">{{ hero.primary_cta.label }}</a>
+        </div>
+    </div>
+</section>
+
+<section id="planner" class="planner">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Pass Planner</p>
+            <h2>Simulate satellite-to-ground visibility window</h2>
+        </div>
+    </div>
+    <div class="planner-grid">
+        <form method="post" class="planner-form">
+            <h3>TLE &amp; Ground Station Input</h3>
+            <div class="field-group">
+                <label>Satellite Name (optional)</label>
+                <input type="text" name="sat_name" value="{{ form_values.get('sat_name', '') }}">
+            </div>
+            <div class="field-group">
+                <label>TLE Line 1</label>
+                <textarea name="tle_line1" rows="2">{{ form_values.get('tle_line1', '') }}</textarea>
+            </div>
+            <div class="field-group">
+                <label>TLE Line 2</label>
+                <textarea name="tle_line2" rows="2">{{ form_values.get('tle_line2', '') }}</textarea>
+            </div>
+            <div class="field-inline">
+                <label><input type="checkbox" name="use_sample" {% if form_values.get('use_sample') %}checked{% endif %}> Use sample ISS TLE</label>
+            </div>
+            <hr>
+            <div class="info-box" style="background: rgba(59, 228, 255, 0.1); border-left: 3px solid var(--accent); padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 4px;">
+                <p style="margin: 0; font-size: 0.9rem; color: var(--muted);">
+                    <strong style="color: var(--accent);">Geographical Location:</strong> 
+                    Latitude, Longitude, and Altitude are required for accurate pass prediction calculations.
+                </p>
+            </div>
+            <h4>Ground Station Parameters</h4>
+            <div class="three-col">
+                <div class="field-group">
+                    <label>Latitude (deg) <span class="hint">N is +, S is -</span></label>
+                    <input type="number" step="0.0001" name="latitude" 
+                           value="{{ form_values.get('latitude', '34.05') }}"
+                           placeholder="e.g., 34.05 for 34.05°N">
+                </div>
+                <div class="field-group">
+                    <label>Longitude (deg) <span class="hint">E is +, W is -</span></label>
+                    <input type="number" step="0.0001" name="longitude" 
+                           value="{{ form_values.get('longitude', '-118.25') }}"
+                           placeholder="e.g., -118.25 for 118.25°W">
+                </div>
+                <div class="field-group">
+                    <label>Altitude (km) <span class="hint">above sea level</span></label>
+                    <input type="number" step="0.01" name="altitude_km" 
+                           value="{{ form_values.get('altitude_km', '0.1') }}"
+                           placeholder="e.g., 0.1">
+                </div>
+            </div>
+            <div class="three-col">
+                <div class="field-group">
+                    <label>Antenna Gain (dBi)</label>
+                    <input type="number" step="0.1" name="gain_dBi" value="{{ form_values.get('gain_dBi', '16.0') }}">
+                </div>
+                <div class="field-group">
+                    <label>Center Frequency (MHz)</label>
+                    <input type="number" step="0.1" name="freq_mhz" value="{{ form_values.get('freq_mhz', '425.0') }}">
+                </div>
+                <div class="field-group">
+                    <label>System Noise Temp (K)</label>
+                    <input type="number" step="1" name="system_noise_temp" value="{{ form_values.get('system_noise_temp', '350') }}">
+                </div>
+            </div>
+            <div class="three-col">
+                <div class="field-group">
+                    <label>HPBW (deg)</label>
+                    <input type="number" step="0.1" name="hpbw_deg" value="{{ form_values.get('hpbw_deg', '30.0') }}">
+                </div>
+                <div class="field-group">
+                    <label>Implementation Loss (dB)</label>
+                    <input type="number" step="0.1" name="impl_loss_dB" value="{{ form_values.get('impl_loss_dB', '3.0') }}">
+                </div>
+            </div>
+            <button type="submit" class="cta primary">Run Pass Prediction</button>
+        </form>
+
+        <div class="planner-results">
+            {% if errors %}
+            <div class="alert error">
+                <h4>Input Issues</h4>
+                <ul>
+                    {% for err in errors %}
+                    <li>{{ err }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if tle_result %}
+            <div class="tle-summary">
+                <h3>{{ tle_result.name }}</h3>
+                <p class="label">Catalog: {{ tle_result.elements.catalog_number }}</p>
+                <p class="small">Epoch: 20{{ tle_result.elements.epoch_year }} / day {{ '%.6f'|format(tle_result.elements.epoch_day) }}</p>
+                <div class="tle-grid">
+                    <div>
+                        <p class="label">Inclination</p>
+                        <p>{{ '%.4f'|format(tle_result.elements.inclination) }}°</p>
+                    </div>
+                    <div>
+                        <p class="label">RAAN</p>
+                        <p>{{ '%.4f'|format(tle_result.elements.raan) }}°</p>
+                    </div>
+                    <div>
+                        <p class="label">Eccentricity</p>
+                        <p>{{ '%.7f'|format(tle_result.elements.eccentricity) }}</p>
+                    </div>
+                    <div>
+                        <p class="label">Mean Motion</p>
+                        <p>{{ '%.8f'|format(tle_result.elements.mean_motion) }} rev/day</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if pass_list %}
+            <div class="passes-table">
+                <h3>Upcoming Passes (next 2 days)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>AOS (UTC)</th>
+                            <th>LOS (UTC)</th>
+                            <th>Duration</th>
+                            <th>Max El</th>
+                            <th>Azimuth at Max El</th>
+                            <th>Range at LOS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in pass_list %}
+                        <tr>
+                            <td>{{ p['AOS'] }}</td>
+                            <td>{{ p['LOS'] }}</td>
+                            <td>{{ p['Duration'] }}</td>
+                            <td>{{ p['Max El'] }}</td>
+                            <td>{{ p['Azimuth at Max El'] }}</td>
+                            <td>{{ p['Range at LOS'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="skyplot-section">
+                <h2>Skyplot Visualization</h2>
+                <p>Visual representation of all satellite passes over the ground station</p>
+                <img src="{{ url_for('skyplot') }}" alt="Skyplot">
+            </div>
+            {% elif tle_result and not errors %}
+            <p class="muted">No passes above 10° elevation in the next 2 days for this configuration.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+
